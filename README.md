@@ -62,6 +62,9 @@ To evaluate DeepType comprehensively, we developed 3 variants of DeepType: DT-we
 #define DTnocache
 ```
 
+## Benchmarks
+The bitcode of the benchmarks in our paper is available at: https://drive.google.com/file/d/1U9rMr4UC0uxVhAH7p0R3127lJpaaQMuj/view?usp=sharing.
+
 ## Publication
 This project is the artifact of the paper DEEPTYPE: Refining Indirect Call Targets with Strong Multi-layer Type Analysis, which is accepted at the 33rd USENIX Security Symposium (USENIX 2024).
 ```

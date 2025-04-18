@@ -105,6 +105,9 @@ struct GlobalContext {
 	// Indirect call instructions.
 	std::vector<CallInst *>IndirectCallInsts;
 
+	// Indirect call-target mappings
+	std::unordered_map<CallInst*, FuncSet> SMLTAResultMap;
+
 	// Modules.
 	ModuleList Modules;
 	ModuleNameMap ModuleMaps;
@@ -119,6 +122,9 @@ protected:
 public:
 	IterativeModulePass(GlobalContext *Ctx_, const char *ID_)
 		: Ctx(Ctx_), ID(ID_) { }
+
+	// api
+	void SMLTAnalysis(const std::vector<std::string> &InputFilenames);
 
 	// Run on each module before iterative pass.
 	virtual bool CollectInformation(Module *M)

@@ -137,24 +137,12 @@ void PrintResults(GlobalContext *GCtx) {
 	//OP<<"# Number of [256,...)-target i-calls: \t\t"<<GCtx->EighttTargetCalls<<"\n";
 }
 
-int main(int argc, char **argv) {
-	auto start = std::chrono::system_clock::now();
+std::unordered_map<CallInst*, FuncSet> SMLTAnalysis(const std::vector<std::string> &InputFilenames) {
 	
-	// Print a stack trace if we signal out.
-	sys::PrintStackTraceOnErrorSignal(argv[0]);
-	PrettyStackTraceProgram X(argc, argv);
-
-	llvm_shutdown_obj Y;  // Call llvm_shutdown() on exit.
-
-	cl::ParseCommandLineOptions(argc, argv, "global analysis\n");
-	SMDiagnostic Err;
-
-	// Loading modules
-	OP << "Total " << InputFilenames.size() << " file(s)\n";
-
 	for (unsigned i = 0; i < InputFilenames.size(); ++i) {
 
 		LLVMContext *LLVMCtx = new LLVMContext();
+		SMDiagnostic Err;
 		std::unique_ptr<Module> M = parseIRFile(InputFilenames[i], Err, *LLVMCtx);
 
 		if (M == NULL) {
@@ -177,8 +165,29 @@ int main(int argc, char **argv) {
 	CallGraphPass CGPass(&GlobalCtx);
 	CGPass.run(GlobalCtx.Modules);
 
+	return GCtx->SMLTAResultMap;
+}
+
+int main(int argc, char **argv) {
+	auto start = std::chrono::system_clock::now();
+	
+	// Print a stack trace if we signal out.
+	sys::PrintStackTraceOnErrorSignal(argv[0]);
+	PrettyStackTraceProgram X(argc, argv);
+
+	llvm_shutdown_obj Y;  // Call llvm_shutdown() on exit.
+
+	cl::ParseCommandLineOptions(argc, argv, "global analysis\n");
+
+	// Loading modules
+	OP << "Total " << InputFilenames.size() << " file(s)\n";
+
+	std::vector<std::string> inputs(InputFilenames.begin(), InputFilenames.end());
+
+	SMLTAnalysis(inputs);
+
 	// Print final results
-	PrintResults(&GlobalCtx);
+	std::unordered_map<CallInst*, FuncSet> resultMap = PrintResults(&GlobalCtx);
 	
 	auto end = std::chrono::system_clock::now();
 	std::cout << "Stage 1 " << std::chrono::duration_cast<std::chrono::milliseconds>(mid-start).count() << " ms" << std::endl;

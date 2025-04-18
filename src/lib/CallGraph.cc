@@ -1435,6 +1435,9 @@ StrPairSet CallGraphPass::FindSubTypes(std::string MLTypeName) {
 
 void CallGraphPass::PrintResults(CallInst *CI, FuncSet FS, std::string MLTypeName) {
 	
+	// record in result map
+	Ctx->SMLTAResultMap[CI] = FS;
+
 	// Print Call site index
 	CSIdx++;
 	errs() << CSIdx << " ";

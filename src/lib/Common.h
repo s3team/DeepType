@@ -16,13 +16,6 @@
 using namespace llvm;
 using namespace std;
 
-#define LOG(lv, stmt)							\
-	do {											\
-		if (VerboseLevel >= lv)						\
-		errs() << stmt;							\
-	} while(0)
-
-
 #define OP llvm::errs()
 
 #define WARN(stmt) LOG(1, "\n[WARN] " << stmt);
@@ -43,8 +36,6 @@ using namespace std;
 #define KMAG  "\x1B[35m"  /* Magenta */
 #define KCYN  "\x1B[36m"  /* Cyan */
 #define KWHT  "\x1B[37m"  /* White */
-
-extern cl::opt<unsigned> VerboseLevel;
 
 //
 // Common functions

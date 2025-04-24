@@ -30,7 +30,7 @@ typedef std::vector< std::pair<llvm::Module*, llvm::StringRef> > ModuleList;
 // Mapping module to its file name.
 typedef std::unordered_map<llvm::Module*, llvm::StringRef> ModuleNameMap;
 // The set of all functions.
-typedef llvm::SmallPtrSet<llvm::Function*, 8> FuncSet;
+typedef std::unordered_set<Function*> FuncSet;
 // The set of strings.
 typedef std::set<std::string> StrSet;
 // The pair of an array and its size
@@ -123,22 +123,20 @@ public:
 	IterativeModulePass(GlobalContext *Ctx_, const char *ID_)
 		: Ctx(Ctx_), ID(ID_) { }
 
-	// api
-	void SMLTAnalysis(const std::vector<std::string> &InputFilenames);
 
 	// Run on each module before iterative pass.
 	virtual bool CollectInformation(Module *M)
 		{ return true; }
 
-	// Run on each module after iterative pass.
-	//virtual bool doFinalization(llvm::Module *M)
-	//	{ return true; }
-
 	// Iterative pass.
 	virtual bool IdentifyTargets(llvm::Module *M)
 		{ return false; }
 
-	virtual void run(ModuleList &modules);
+	virtual void run(Module *M);
 };
+
+// api
+extern GlobalContext GlobalCtx;
+std::unordered_map<CallInst*, std::unordered_set<Function*>> SMLTAnalysis(Module *M);
 
 #endif

@@ -2133,7 +2133,6 @@ void CallGraphPass::FindCalleesWithSMLTA(CallInst *CI) {
 		FS = ATFS;
 		
 		// Record in TargetLoopupMap;
-		TargetLookupMap[stringHash(MLTypeName)] = FS;
 	}
 	
 			

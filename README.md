@@ -65,6 +65,9 @@ To evaluate DeepType comprehensively, we developed 3 variants of DeepType: DT-we
 ## Benchmarks
 The bitcode of the benchmarks in our paper is available at: https://drive.google.com/file/d/1U9rMr4UC0uxVhAH7p0R3127lJpaaQMuj/view?usp=sharing.
 
+## smlta-api
+This branch offers a convenient API for integration. To utilize SMLTA in your analysis, execute ```build.sh``` to compile DeepType into a static library. Then, include this library in your tool. Once integrated, you can directly invoke the ```SMLTAnalysis``` function to generate a mapping from indirect call sites to their corresponding target functions.
+
 ## Publication
 This project is the artifact of the paper DEEPTYPE: Refining Indirect Call Targets with Strong Multi-layer Type Analysis, which is accepted at the 33rd USENIX Security Symposium (USENIX 2024).
 ```

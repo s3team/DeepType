@@ -235,11 +235,12 @@ std::string CallGraphPass::FirstLayerTrim(std::string fName) {
 	return clearName;
 }
 
-std::string CallGraphPass::GenerateMLTypeName(Value *VO, std::string MLTypeName) {	
+std::string CallGraphPass::GenerateMLTypeName(Instruction *loc, Value *VO, std::string MLTypeName) {	
 	VO = NextLayerTypeExtraction(VO);
 	while (VO != NULL) {
 		if (ConstantExpr *CE = dyn_cast<ConstantExpr>(VO)) {
 			Instruction *Inst = CE->getAsInstruction();
+			Inst->insertBefore(loc);
 			if (GetElementPtrInst *GEPInst = dyn_cast<GetElementPtrInst>(Inst)) {
 				MLTypeName = GEPInstAnalysis(GEPInst);
 			}
@@ -760,6 +761,15 @@ void CallGraphPass::GlobalVariableAnalysis(GlobalVariable *GV, Constant *Ini){
 					}
 					else if (ConstantExpr *CE = dyn_cast<ConstantExpr>(ov)) {
 						Instruction *Inst = CE->getAsInstruction();
+						if (!GV->getParent()->empty()) {
+        						Function &FirstFunc = GV->getParent()->getFunctionList().front();
+        						BasicBlock &Entry = FirstFunc.getEntryBlock();
+        						Inst->insertBefore(&*Entry.getFirstInsertionPt());
+    						} else {
+        						Inst->deleteValue();  // prevent memory leak
+        						return;
+    						}
+
 						Value *operand = Inst->getOperand(0);
 						if (GlobalVariable *GVinner = dyn_cast<GlobalVariable>(operand)) {
 							IterativeGlobalVariable(GV, GVinner, ov);
@@ -828,6 +838,7 @@ void CallGraphPass::UnfoldCompoundInst(Instruction *I) {
 			// Transform the ConstantExpr into an instruction
 			ConstantExpr *CE = dyn_cast<ConstantExpr>(operand);
 			Instruction * newInst = CE->getAsInstruction();
+			newInst->insertBefore(I);
 			InstHierarchy[I][index] = newInst;
 			UnfoldCompoundInst(newInst);
 		}
@@ -853,6 +864,7 @@ void CallGraphPass::MemCpyInstAnalysis(Instruction *I){
 		}	
 		else if (ConstantExpr *destCE = dyn_cast<ConstantExpr>(dest)) {
 			Instruction *destInst = destCE->getAsInstruction();
+			destInst->insertBefore(I);
 			if (isa<CastInst>(destInst)) {
 				destCI = dyn_cast<CastInst>(destInst);
 			}
@@ -864,6 +876,7 @@ void CallGraphPass::MemCpyInstAnalysis(Instruction *I){
 		}
 		else if (ConstantExpr *srcCE = dyn_cast<ConstantExpr>(src)) {
 			Instruction *srcInst = srcCE->getAsInstruction();
+			srcInst->insertBefore(I);
 			if (isa<CastInst>(srcInst)) {
 				srcCI = dyn_cast<CastInst>(srcInst);
 			}
@@ -882,8 +895,8 @@ void CallGraphPass::MemCpyInstAnalysis(Instruction *I){
 			STypeName = SingleType2String(srcTy);
 			
 			// Trace back to get next layer(s)
-			DTypeName = GenerateMLTypeName(destCI->getOperand(0), DTypeName);
-			STypeName = GenerateMLTypeName(srcCI->getOperand(0), STypeName);
+			DTypeName = GenerateMLTypeName(destCI, destCI->getOperand(0), DTypeName);
+			STypeName = GenerateMLTypeName(srcCI, srcCI->getOperand(0), STypeName);
 			
 			// STypeName shares targets with DTypeName
 			UpdateRelationshipMap(DTypeName, STypeName);
@@ -929,7 +942,7 @@ void CallGraphPass::StoreInstAnalysis(StoreInst *SI) {
 	// PO is not an embedded inst
 	else {	
 		PTypeName = SingleType2String(PTy);
-		PTypeName = GenerateMLTypeName(PO, PTypeName);		
+		PTypeName = GenerateMLTypeName(SI, PO, PTypeName);		
 	}
 	
 	// Analyze VO and record useful info.
@@ -956,7 +969,7 @@ void CallGraphPass::StoreInstAnalysis(StoreInst *SI) {
 		// VO is a pointer
 		else if (isa<PointerType>(VTy)) {
 			VTypeName = SingleType2String(VTy);
-			VTypeName = GenerateMLTypeName(VO, VTypeName);
+			VTypeName = GenerateMLTypeName(SI, VO, VTypeName);
 			if (VTypeName != PTypeName) {
 				UpdateRelationshipMap(PTypeName, VTypeName);
 			}	
@@ -986,7 +999,7 @@ void CallGraphPass::StoreInstAnalysis(StoreInst *SI) {
 		else if (CastInst *CastI = dyn_cast<CastInst>(VO)) { 
 			Type *CastSrc = CastI->getSrcTy();
 			VTypeName = SingleType2String(CastSrc);
-			VTypeName = GenerateMLTypeName(CastI->getOperand(0), VTypeName);
+			VTypeName = GenerateMLTypeName(CastI, CastI->getOperand(0), VTypeName);
 			if (VTypeName != PTypeName) {
 				UpdateRelationshipMap(PTypeName, VTypeName);
 			}			
@@ -1068,7 +1081,7 @@ std::string CallGraphPass::CastInstAnalysis(CastInst *CI) {
 	// SrcTy is not an embedded inst
 	else {
 		STypeName = SingleType2String(SrcTy);
-		STypeName = GenerateMLTypeName(CI->getOperand(0), STypeName);
+		STypeName = GenerateMLTypeName(CI, CI->getOperand(0), STypeName);
 	}
 	
 	//  DestTy is an embedded inst
@@ -1082,7 +1095,7 @@ std::string CallGraphPass::CastInstAnalysis(CastInst *CI) {
 		DTypeName = SingleType2String(DestTy);
 		unsigned operandNum = CI->getNumOperands();
 		if (operandNum > 1) {
-			DTypeName = GenerateMLTypeName(CI->getOperand(1), DTypeName);
+			DTypeName = GenerateMLTypeName(CI, CI->getOperand(1), DTypeName);
 		}	
 	}	
 	
@@ -1130,6 +1143,7 @@ void CallGraphPass::CallInstAnalysis(CallInst *CallI) {
 	if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V)){
 		// e.g., call i8* bitcast (i8*(...) @func to i8*(...))(...)
 		Instruction *Inst = CE->getAsInstruction();
+		Inst->insertBefore(CallI);
 		if (CastInst *CastI = dyn_cast<CastInst>(Inst)) {
 			Function *F = dyn_cast<Function>(V->stripPointerCasts());
 			if (F != NULL) {
@@ -1149,7 +1163,7 @@ void CallGraphPass::CallInstAnalysis(CallInst *CallI) {
 		Type *argType = arg->getType();
 		// Trace back to get arg's multi-layer type
 		MLTypeName = SingleType2String(argType);
-		MLTypeName = GenerateMLTypeName(arg, MLTypeName);
+		MLTypeName = GenerateMLTypeName(CallI, arg, MLTypeName);
 		
 		if (Function *Func = dyn_cast<Function>(arg)) {
 			// arg's first layer type
@@ -1882,7 +1896,7 @@ void CallGraphPass::FindCalleesWithSMLTA(CallInst *CI) {
 			
 	}
 	else {	
-		MLTypeName = GenerateMLTypeName(CV, MLTypeName);
+		MLTypeName = GenerateMLTypeName(CI, CV, MLTypeName);
 	
 		// If the called value can be traced back to an AllocaInst in ArgAllocSet
 		// This call site has incomplete type, use "&" to mark it

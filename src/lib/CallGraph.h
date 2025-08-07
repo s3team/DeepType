@@ -106,7 +106,7 @@ class CallGraphPass : public IterativeModulePass {
 		bool IsEscapingType(std::string TyName);
 		std::string GetStructIdentity(StructType* STy);
 		bool HasSubString(std::string str, std::string substr);				
-		std::string GenerateMLTypeName(Value *VO, std::string MLTypeName);
+		std::string GenerateMLTypeName(Instruction *loc, Value *VO, std::string MLTypeName);
 		std::string StructNameTrim(std::string sName);
 		std::size_t FindEndOfStruct(std::string structstr);
 		std::string FirstLayerTrim(std::string fName);
